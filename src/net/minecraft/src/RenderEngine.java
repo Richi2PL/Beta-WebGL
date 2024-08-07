@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 import org.lwjgl.opengl.GL11;
 
-import net.lax1dude.eaglercraft.BufferedImage;
-import net.lax1dude.eaglercraft.adapter.EaglerAdapterImpl2.TextureGL;
+import net.PeytonPlayz585.awt.image.BufferedImage;
+import net.lax1dude.eaglercraft.SpriteSheetTexture;
 
 public class RenderEngine {
 	public static boolean useMipmaps = false;
@@ -21,17 +21,19 @@ public class RenderEngine {
 	private HashMap field_28151_c = new HashMap();
 	private HashMap textureNameToImageMap = new HashMap();
 	private IntBuffer singleIntBuffer = GLAllocation.createDirectIntBuffer(1);
-	private ByteBuffer imageData = GLAllocation.createDirectByteBuffer(1048576);
+	private ByteBuffer imageData = GLAllocation.createDirectByteBuffer(4194304 * 2); //Large enough (Maybe!?!?)
 	private List textureList = new ArrayList();
 	private GameSettings options;
 	private boolean clampTexture = false;
 	private boolean blurTexture = false;
-	
+	private List<SpriteSheetTexture> textureSpriteList = new ArrayList();
+	private TexturePackList texturePack;
 	private BufferedImage missingTextureImage;
+	private IntBuffer imageDataB1 = GLAllocation.createDirectIntBuffer(4194304 * 2); //:> !?!?!?!?
 
-	public RenderEngine(GameSettings var2) {
+	public RenderEngine(TexturePackList var1, GameSettings var2) {
 		this.options = var2;
-		
+		this.texturePack = var1;
 		int[] missingTexture = new int[256];
 		for(int i = 0; i < 256; ++i) {
 			missingTexture[i] = ((i / 16 + (i % 16)) % 2 == 0) ? 0xffff00ff : 0xff000000;
@@ -40,6 +42,7 @@ public class RenderEngine {
 	}
 
 	public int[] func_28149_a(String var1) {
+		TexturePackBase var2 = this.texturePack.selectedTexturePack;
 		int[] var3 = (int[])this.field_28151_c.get(var1);
 		if(var3 != null) {
 			return var3;
@@ -48,14 +51,14 @@ public class RenderEngine {
 				Object var6 = null;
 				if(var1.startsWith("%clamp%")) {
 					this.clampTexture = true;
-					var3 = this.func_28148_b(this.readTextureImage(GL11.getResourceAsStream(var1.substring(7))));
+					var3 = this.func_28148_b(this.readTextureImage(var2.getResourceAsStream(var1.substring(7))));
 					this.clampTexture = false;
 				} else if(var1.startsWith("%blur%")) {
 					this.blurTexture = true;
-					var3 = this.func_28148_b(this.readTextureImage(GL11.getResourceAsStream(var1.substring(6))));
+					var3 = this.func_28148_b(this.readTextureImage(var2.getResourceAsStream(var1.substring(6))));
 					this.blurTexture = false;
 				} else {
-					InputStream var7 = GL11.getResourceAsStream(var1);
+					InputStream var7 = var2.getResourceAsStream(var1);
 					if(var7 == null) {
 						var3 = this.func_28148_b(this.missingTextureImage);
 					} else {
@@ -90,6 +93,7 @@ public class RenderEngine {
 	}
 
 	public int getTexture(String var1) {
+		TexturePackBase var2 = this.texturePack.selectedTexturePack;
 		Integer var3 = (Integer)this.textureMap.get(var1);
 		if(var3 != null) {
 			return var3.intValue();
@@ -100,14 +104,14 @@ public class RenderEngine {
 				int var6 = this.singleIntBuffer.get(0);
 				if(var1.startsWith("%clamp%")) {
 					this.clampTexture = true;
-					this.setupTexture(this.readTextureImage(GL11.getResourceAsStream(var1.substring(7))), var6);
+					this.setupTexture(this.readTextureImage(var2.getResourceAsStream(var1.substring(7))), var6);
 					this.clampTexture = false;
 				} else if(var1.startsWith("%blur%")) {
 					this.blurTexture = true;
-					this.setupTexture(this.readTextureImage(GL11.getResourceAsStream(var1.substring(6))), var6);
+					this.setupTexture(this.readTextureImage(var2.getResourceAsStream(var1.substring(6))), var6);
 					this.blurTexture = false;
 				} else {
-					InputStream var7 = GL11.getResourceAsStream(var1);
+					InputStream var7 = var2.getResourceAsStream(var1);
 					if(var7 == null) {
 						this.setupTexture(this.missingTextureImage, var6);
 					} else {
@@ -285,7 +289,22 @@ public class RenderEngine {
 		var1.onTick();
 	}
 
+//	public void updateDynamicTextures() {
+//		for (int i = 0; i < textureList.size(); i++) {
+//			TextureFX texturefx = (TextureFX) textureList.get(i);
+//			texturefx.anaglyphEnabled = this.options.anaglyph;
+//			texturefx.onTick();
+//			texturefx.bindImage(this);
+//			int tileSize = 16 * 16 * 4;
+//			imageData.clear();
+//			imageData.put(texturefx.imageData);
+//			imageData.position(0).limit(tileSize);
+//			GL11.glTexSubImage2D(3553, 0, (texturefx.iconIndex % 16) * 16, (texturefx.iconIndex / 16) * 16, 16, 16, 6408, 5121, imageData);
+//		}
+//	}
+	
 	public void updateDynamicTextures() {
+
 		for (int i = 0; i < textureList.size(); i++) {
 			TextureFX texturefx = (TextureFX) textureList.get(i);
 			texturefx.anaglyphEnabled = this.options.anaglyph;
@@ -297,6 +316,27 @@ public class RenderEngine {
 			imageData.position(0).limit(tileSize);
 			GL11.glTexSubImage2D(3553, 0, (texturefx.iconIndex % 16) * 16, (texturefx.iconIndex / 16) * 16, 16, 16, 6408, 5121, imageData);
 		}
+
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, getTexture("/terrain.png"));
+		for(int i = 0, l = textureSpriteList.size(); i < l; ++i) {
+			SpriteSheetTexture sp = textureSpriteList.get(i);
+			sp.update();
+			int w = 16;
+			int tileSize = (w * sp.iconTileSize) * (w * sp.iconTileSize) * 4;
+			//for(int j = 0; j < 5; ++j) {
+				imageDataB1.clear();
+				imageDataB1.put(sp.grabFrame(0));
+				imageDataB1.position(0).limit(tileSize);
+				GL11.glTexSubImage2D(3553, 0, (sp.iconIndex % 16) * w, (sp.iconIndex / 16) * w, w * sp.iconTileSize, w * sp.iconTileSize,
+						6408, 5121, imageDataB1);
+				w /= 2;
+			//}
+		}
+
+	}
+	
+	public void registerSpriteSheet(String name, int iconIndex, int iconTileSize) {
+		textureSpriteList.add(new SpriteSheetTexture(name, iconIndex, iconTileSize));
 	}
 
 	private int averageColor(int var1, int var2) {
@@ -328,6 +368,7 @@ public class RenderEngine {
 	}
 
 	public void refreshTextures() {
+		TexturePackBase var1 = this.texturePack.selectedTexturePack;
 		Iterator var2 = this.textureNameToImageMap.keySet().iterator();
 
 		BufferedImage var4;
@@ -346,12 +387,12 @@ public class RenderEngine {
 			try {
 				if(var9.startsWith("%clamp%")) {
 					this.clampTexture = true;
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9.substring(7)));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9.substring(7)));
 				} else if(var9.startsWith("%blur%")) {
 					this.blurTexture = true;
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9.substring(6)));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9.substring(6)));
 				} else {
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9));
 				}
 
 				int var5 = ((Integer)this.textureMap.get(var9)).intValue();
@@ -371,12 +412,12 @@ public class RenderEngine {
 			try {
 				if(var9.startsWith("%clamp%")) {
 					this.clampTexture = true;
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9.substring(7)));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9.substring(7)));
 				} else if(var9.startsWith("%blur%")) {
 					this.blurTexture = true;
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9.substring(6)));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9.substring(6)));
 				} else {
-					var4 = this.readTextureImage(GL11.getResourceAsStream(var9));
+					var4 = this.readTextureImage(var1.getResourceAsStream(var9));
 				}
 
 				this.func_28147_a(var4, (int[])this.field_28151_c.get(var9));
@@ -386,11 +427,15 @@ public class RenderEngine {
 				var6.printStackTrace();
 			}
 		}
+		
+		for(int j = 0, l = textureSpriteList.size(); j < l; ++j) {
+			textureSpriteList.get(j).reloadData();
+		}
 
 	}
 
 	private BufferedImage readTextureImage(InputStream var1) throws IOException {
-		return GL11.loadPNG(((ByteArrayInputStream)var1).readAllBytes());
+		return GL11.EaglerAdapterImpl2.loadPNG(((ByteArrayInputStream)var1).readAllBytes());
 	}
 
 	public void bindTexture(int var1) {

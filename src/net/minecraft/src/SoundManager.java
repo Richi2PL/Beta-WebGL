@@ -3,7 +3,7 @@ package net.minecraft.src;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.PeytonPlayz585.opengl.GL11;
+import org.lwjgl.opengl.GL11;
 
 public class SoundManager {
 	
@@ -24,7 +24,7 @@ public class SoundManager {
 	
 	public void onSoundOptionsChanged() {
 		for(int i = 0; i < sounds.size(); i++) {
-			if(!GL11.isPlaying(sounds.get(i))) {
+			if(!GL11.EaglerAdapterImpl2.isPlaying(sounds.get(i))) {
 				sounds.remove(i);
 			}
 		}
@@ -32,24 +32,24 @@ public class SoundManager {
 		if(loaded) {
 			if(this.options.musicVolume == 0.0F) {
 				if(BgMusic != -1) {
-					GL11.endSound(BgMusic);
+					GL11.EaglerAdapterImpl2.endSound(BgMusic);
 				}
 			} else {
 				if(BgMusic != -1) {
-					GL11.setVolume(BgMusic, this.options.musicVolume);
+					GL11.EaglerAdapterImpl2.setVolume(BgMusic, this.options.musicVolume);
 				}
 			}
 			
 			if(this.options.soundVolume == 0.0F) {
 				for(Integer i : sounds) {
 					if(i != -1) {
-						GL11.endSound(i);
+						GL11.EaglerAdapterImpl2.endSound(i);
 					}
 				}
 			} else {
 				for(Integer i : sounds) {
 					if(i != -1) {
-						GL11.setVolume(i, this.options.soundVolume);
+						GL11.EaglerAdapterImpl2.setVolume(i, this.options.soundVolume);
 					}
 				}
 			}
@@ -70,28 +70,34 @@ public class SoundManager {
 	
 	public void playRandomMusicIfReady() {
 		for(int i = 0; i < sounds.size(); i++) {
-			if(!GL11.isPlaying(sounds.get(i))) {
+			if(!GL11.EaglerAdapterImpl2.isPlaying(sounds.get(i))) {
 				sounds.remove(i);
 			}
 		}
 		
 		if(loaded && this.options.musicVolume != 0.0F) {
-			if(!GL11.isPlaying(BgMusic)) {
-				if(this.ticksBeforeMusic > 0) {
-					--this.ticksBeforeMusic;
+			if(!GL11.EaglerAdapterImpl2.isPlaying(BgMusic)) {
+				try {
+					if(this.ticksBeforeMusic > 0) {
+						--this.ticksBeforeMusic;
+						return;
+					}
+				
+					//Apparently I DO NOT know how to use random.nextInt
+					int var1 = rand.nextInt(music.length);
+					this.ticksBeforeMusic = this.rand.nextInt(12000) + 12000;
+					BgMusic = GL11.EaglerAdapterImpl2.beginPlaybackStatic(music[var1].replace(".", "/").replace("_", "."), this.options.musicVolume, 1.0F);
+				} catch(Exception e) {
+					BgMusic = -1;
 					return;
 				}
-				
-				int var1 = rand.nextInt((music.length - 1) + 1) + 1;
-				this.ticksBeforeMusic = this.rand.nextInt(12000) + 12000;
-				BgMusic = GL11.beginPlaybackStatic(music[var1].replace(".", "/").replace("_", "."), this.options.musicVolume, 1.0F);
 			}
 		}
 	}
 	
 	public void func_338_a(EntityLiving var1, float var2) {
 		for(int i = 0; i < sounds.size(); i++) {
-			if(!GL11.isPlaying(sounds.get(i))) {
+			if(!GL11.EaglerAdapterImpl2.isPlaying(sounds.get(i))) {
 				sounds.remove(i);
 			}
 		}
@@ -104,7 +110,7 @@ public class SoundManager {
 			    double var6 = var1.prevPosY + (var1.posY - var1.prevPosY) * (double)var2;
 			    double var8 = var1.prevPosZ + (var1.posZ - var1.prevPosZ) * (double)var2;
 			    try {
-			    	GL11.setListenerPos((float)var4, (float)var6, (float)var8, (float)var1.motionX, (float)var1.motionY, (float)var1.motionZ, (float)var9, (float)var3);
+			    	GL11.EaglerAdapterImpl2.setListenerPos((float)var4, (float)var6, (float)var8, (float)var1.motionX, (float)var1.motionY, (float)var1.motionZ, (float)var9, (float)var3);
 			    } catch(Exception e) {
 			    	// ???
 			    }
@@ -118,19 +124,24 @@ public class SoundManager {
 	
 	public void playSound(String var1, float var2, float var3, float var4, float var5, float var6, int number) {
 		for(int i = 0; i < sounds.size(); i++) {
-			if(!GL11.isPlaying(sounds.get(i))) {
+			if(!GL11.EaglerAdapterImpl2.isPlaying(sounds.get(i))) {
 				sounds.remove(i);
 			}
 		}
 		
 		if(loaded && this.options.soundVolume != 0.0F) {
-			String var7 = "sounds/" + var1.replace(".", "/") + number + ".ogg";
+			if(var1 == null) {
+				return;
+			}
+			
+			String var7;
+			var7 = "sounds/" + var1.replace(".", "/") + number + ".ogg";
 			if(var7 != null && var5 > 0.0F) {
 				if(var5 > 1.0F) {
 					var5 = 1.0F;
 				}
 
-				int i = GL11.beginPlayback(var7.replace("0", ""), var2, var3, var4, var5 * this.options.soundVolume, var6);
+				int i = GL11.EaglerAdapterImpl2.beginPlayback(var7.replace("0", ""), var2, var3, var4, var5 * this.options.soundVolume, var6);
 				if(i != -1) {
 					sounds.add(i);
 				} else {
@@ -150,7 +161,7 @@ public class SoundManager {
 	
 	public void playSoundFX(String var1, float var2, float var3, int number) {
 		for(int i = 0; i < sounds.size(); i++) {
-			if(!GL11.isPlaying(sounds.get(i))) {
+			if(!GL11.EaglerAdapterImpl2.isPlaying(sounds.get(i))) {
 				sounds.remove(i);
 			}
 		}
@@ -162,7 +173,7 @@ public class SoundManager {
 					var2 = 1.0F;
 				}
 
-				int i = GL11.beginPlaybackStatic(var4.replace("0", ""), var2 * this.options.soundVolume, var3);
+				int i = GL11.EaglerAdapterImpl2.beginPlaybackStatic(var4.replace("0", ""), var2 * this.options.soundVolume, var3);
 				if(i != -1) {
 					sounds.add(i);
 				} else {

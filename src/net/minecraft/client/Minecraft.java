@@ -1,8 +1,12 @@
 package net.minecraft.client;
 
-import net.PeytonPlayz585.input.Keyboard;
-import net.PeytonPlayz585.input.Mouse;
-import net.PeytonPlayz585.opengl.GL11;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL11;
+
+import net.lax1dude.eaglercraft.TextureNewClockFX;
+import net.lax1dude.eaglercraft.TextureNewCompassFX;
 import net.minecraft.src.AchievementList;
 import net.minecraft.src.AxisAlignedBB;
 import net.minecraft.src.Block;
@@ -57,6 +61,7 @@ import net.minecraft.src.RenderEngine;
 import net.minecraft.src.RenderGlobal;
 import net.minecraft.src.RenderManager;
 import net.minecraft.src.ScaledResolution;
+import net.minecraft.src.ScreenShotHelper;
 import net.minecraft.src.Session;
 import net.minecraft.src.SoundManager;
 import net.minecraft.src.StatFileWriter;
@@ -64,14 +69,7 @@ import net.minecraft.src.StatList;
 import net.minecraft.src.StatStringFormatKeyInv;
 import net.minecraft.src.Teleporter;
 import net.minecraft.src.Tessellator;
-import net.minecraft.src.TextureCompassFX;
-import net.minecraft.src.TextureFlamesFX;
-import net.minecraft.src.TextureLavaFX;
-import net.minecraft.src.TextureLavaFlowFX;
-import net.minecraft.src.TexturePortalFX;
-import net.minecraft.src.TextureWatchFX;
-import net.minecraft.src.TextureWaterFX;
-import net.minecraft.src.TextureWaterFlowFX;
+import net.minecraft.src.TexturePackList;
 import net.minecraft.src.Timer;
 import net.minecraft.src.UnexpectedThrowable;
 import net.minecraft.src.Vec3D;
@@ -112,6 +110,7 @@ public class Minecraft implements Runnable {
 	public GameSettings gameSettings;
 	public SoundManager sndManager = new SoundManager();
 	public MouseHelper mouseHelper;
+	public TexturePackList texturePackList;
 	private ISaveFormat saveLoader;
 	public static long[] frameTimes = new long[512];
 	public static long[] tickTimes = new long[512];
@@ -119,9 +118,7 @@ public class Minecraft implements Runnable {
 	public StatFileWriter statFileWriter;
 	private String serverName;
 	private int serverPort;
-	private TextureWaterFX textureWaterFX = new TextureWaterFX();
-	private TextureLavaFX textureLavaFX = new TextureLavaFX();
-	private static String minecraftDir = "minecraft";
+	private static final String minecraftDir = "minecraft";
 	public volatile boolean running = true;
 	public String debug = "";
 	boolean isTakingScreenshot = false;
@@ -136,9 +133,9 @@ public class Minecraft implements Runnable {
 
 	public Minecraft() {
 		StatList.func_27360_a();
-		this.tempDisplayHeight = GL11.getCanvasHeight();
-		this.displayWidth = GL11.getCanvasWidth();
-		this.displayHeight = GL11.getCanvasHeight();
+		this.tempDisplayHeight = GL11.EaglerAdapterImpl2.getCanvasHeight();
+		this.displayWidth = GL11.EaglerAdapterImpl2.getCanvasWidth();
+		this.displayHeight = GL11.EaglerAdapterImpl2.getCanvasHeight();
 
 		theMinecraft = this;
 	}
@@ -156,7 +153,8 @@ public class Minecraft implements Runnable {
 	public void startGame() {
 		this.saveLoader = new EaglerSaveFormat(minecraftDir + "/" + "saves");
 		this.gameSettings = new GameSettings(this, minecraftDir);
-		this.renderEngine = new RenderEngine(this.gameSettings);
+		this.texturePackList = new TexturePackList(this, this.minecraftDir);
+		this.renderEngine = new RenderEngine(this.texturePackList, this.gameSettings);
 		this.fontRenderer = new FontRenderer(this.gameSettings, "/font/default.png", this.renderEngine);
 		ColorizerWater.func_28182_a(this.renderEngine.func_28149_a("/misc/watercolor.png"));
 		ColorizerGrass.func_28181_a(this.renderEngine.func_28149_a("/misc/grasscolor.png"));
@@ -181,21 +179,24 @@ public class Minecraft implements Runnable {
 		GL11.glMatrixMode(GL11.GL_MODELVIEW);
 		this.checkGLError("Startup");
 		this.sndManager.loadSoundSettings(this.gameSettings);
-		this.renderEngine.registerTextureFX(this.textureLavaFX);
-		this.renderEngine.registerTextureFX(this.textureWaterFX);
-		this.renderEngine.registerTextureFX(new TexturePortalFX());
-		this.renderEngine.registerTextureFX(new TextureCompassFX(this));
-		this.renderEngine.registerTextureFX(new TextureWatchFX(this));
-		this.renderEngine.registerTextureFX(new TextureWaterFlowFX());
-		this.renderEngine.registerTextureFX(new TextureLavaFlowFX());
-		this.renderEngine.registerTextureFX(new TextureFlamesFX(0));
-		this.renderEngine.registerTextureFX(new TextureFlamesFX(1));
+		renderEngine.registerTextureFX(new TextureNewCompassFX());
+		renderEngine.registerTextureFX(new TextureNewClockFX());
+		renderEngine.registerSpriteSheet("portal", Block.portal.blockIndexInTexture, 1);
+		renderEngine.registerSpriteSheet("water", Block.waterStill.blockIndexInTexture, 1);
+		renderEngine.registerSpriteSheet("water_flow", Block.waterMoving.blockIndexInTexture + 1, 2);
+		renderEngine.registerSpriteSheet("lava", Block.lavaStill.blockIndexInTexture, 1);
+		renderEngine.registerSpriteSheet("lava_flow", Block.lavaMoving.blockIndexInTexture + 1, 2);
+		renderEngine.registerSpriteSheet("fire_0", Block.fire.blockIndexInTexture, 1);
+		renderEngine.registerSpriteSheet("fire_1", Block.fire.blockIndexInTexture + 16, 1);
 		this.renderGlobal = new RenderGlobal(this, this.renderEngine);
 		GL11.glViewport(0, 0, this.displayWidth, this.displayHeight);
 		this.effectRenderer = new EffectRenderer(this.theWorld, this.renderEngine);
 
 		this.checkGLError("Post startup");
 		this.ingameGUI = new GuiIngame(this);
+		
+		GL11.anisotropicPatch(GL11.EaglerAdapterImpl2.glNeedsAnisotropicFix());
+		
 		this.displayGuiScreen(new GuiMainMenu());
 	}
 
@@ -233,7 +234,7 @@ public class Minecraft implements Runnable {
 		
 		//Emulate Display.swapBuffers()
 		GL11.glFlush();
-		GL11.updateDisplay();
+		Display.update();
 		GL11.optimize();
 	}
 
@@ -247,6 +248,10 @@ public class Minecraft implements Runnable {
 		var9.addVertexWithUV((double)(var1 + var5), (double)(var2 + 0), 0.0D, (double)((float)(var3 + var5) * var7), (double)((float)(var4 + 0) * var8));
 		var9.addVertexWithUV((double)(var1 + 0), (double)(var2 + 0), 0.0D, (double)((float)(var3 + 0) * var7), (double)((float)(var4 + 0) * var8));
 		var9.draw();
+	}
+	
+	public String getSaveDir() {
+		return Minecraft.minecraftDir;
 	}
 
 	public ISaveFormat getSaveLoader() {
@@ -370,7 +375,7 @@ public class Minecraft implements Runnable {
 						this.theWorld.updatingLighting();
 					}
 
-					GL11.updateDisplay();
+					Display.update();
 
 					if(this.thePlayer != null && this.thePlayer.isEntityInsideOpaqueBlock()) {
 						this.gameSettings.thirdPersonView = false;
@@ -393,9 +398,9 @@ public class Minecraft implements Runnable {
 					this.guiAchievement.updateAchievementWindow();
 					Thread.yield();
 
-					if(GL11.getCanvasWidth() != this.displayWidth || GL11.getCanvasHeight() != this.displayHeight) {
-						this.displayWidth = GL11.getCanvasWidth();
-						this.displayHeight = GL11.getCanvasHeight();
+					if(GL11.EaglerAdapterImpl2.getCanvasWidth() != this.displayWidth || GL11.EaglerAdapterImpl2.getCanvasHeight() != this.displayHeight) {
+						this.displayWidth = GL11.EaglerAdapterImpl2.getCanvasWidth();
+						this.displayHeight = GL11.EaglerAdapterImpl2.getCanvasHeight();
 						if(this.displayWidth <= 0) {
 							this.displayWidth = 1;
 						}
@@ -429,13 +434,13 @@ public class Minecraft implements Runnable {
 				}
 			}
 		} catch (MinecraftError var20) {
-		} catch (Throwable var21) {
+		} /*catch (Throwable var21) {
 			this.func_28002_e();
 			var21.printStackTrace();
 			this.onMinecraftCrash(new UnexpectedThrowable("Unexpected error", var21));
 		} finally {
 			this.shutdownMinecraftApplet();
-		}
+		}*/
 
 	}
 
@@ -783,20 +788,24 @@ public class Minecraft implements Runnable {
 											if(Keyboard.getEventKey() == 1) {
 												this.displayInGameMenu();
 											}
-
-											if(Keyboard.getEventKey() == 33 && GL11.isKeyDown(2)) {
+											
+											if(Keyboard.isFunctionKeyDown(this.gameSettings.keyBindToggleFog.keyCode, 2)) {
 												this.gameSettings.hideGUI = !this.gameSettings.hideGUI;
 											}
-
-											if(Keyboard.getEventKey() == 33 && GL11.isKeyDown(4)) {
+											
+											if(Keyboard.isFunctionKeyDown(this.gameSettings.keyBindToggleFog.keyCode, 3)) {
+												this.ingameGUI.addChatMessage(ScreenShotHelper.saveScreenshot());
+											}
+											
+											if(Keyboard.isFunctionKeyDown(this.gameSettings.keyBindToggleFog.keyCode, 4)) {
 												this.gameSettings.showDebugInfo = !this.gameSettings.showDebugInfo;
 											}
-
-											if(Keyboard.getEventKey() == 33 && GL11.isKeyDown(6)) {
+											
+											if(Keyboard.isFunctionKeyDown(this.gameSettings.keyBindToggleFog.keyCode, 6)) {
 												this.gameSettings.thirdPersonView = !this.gameSettings.thirdPersonView;
 											}
-
-											if(Keyboard.getEventKey() == 33 && GL11.isKeyDown(9)) {
+											
+											if(Keyboard.isFunctionKeyDown(this.gameSettings.keyBindToggleFog.keyCode, 9)) {
 												this.gameSettings.smoothCamera = !this.gameSettings.smoothCamera;
 											}
 
@@ -814,14 +823,15 @@ public class Minecraft implements Runnable {
 										}
 
 										for(int var6 = 0; var6 < 9; ++var6) {
-											if(Keyboard.getEventKey() == 2 + var6) {
+											if(Keyboard.getEventKey() == 2 + var6 && !Keyboard.isKeyDown(this.gameSettings.keyBindToggleFog.keyCode)) {
 												this.thePlayer.inventory.currentItem = var6;
 											}
 										}
 
-										if(Keyboard.getEventKey() == this.gameSettings.keyBindToggleFog.keyCode) {
-											this.gameSettings.setOptionValue(EnumOptions.RENDER_DISTANCE, !Keyboard.isKeyDown(42) && !Keyboard.isKeyDown(54) ? 1 : -1);
-										}
+										//rip
+										//if(Keyboard.getEventKey() == this.gameSettings.keyBindToggleFog.keyCode) {
+											//this.gameSettings.setOptionValue(EnumOptions.RENDER_DISTANCE, !Keyboard.isKeyDown(42) && !Keyboard.isKeyDown(54) ? 1 : -1);
+										//}
 									}
 								}
 							}

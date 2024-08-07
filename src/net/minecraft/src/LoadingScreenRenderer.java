@@ -1,6 +1,8 @@
 package net.minecraft.src;
 
 import net.minecraft.client.Minecraft;
+
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 
 public class LoadingScreenRenderer implements IProgressUpdate {
@@ -39,6 +41,23 @@ public class LoadingScreenRenderer implements IProgressUpdate {
 			GL11.glMatrixMode(GL11.GL_MODELVIEW);
 			GL11.glLoadIdentity();
 			GL11.glTranslatef(0.0F, 0.0F, -200.0F);
+		}
+	}
+	
+	public void displayLoadingString(String s, String s1) {
+		if (!mc.running) {
+			if (field_1005_e) {
+				return;
+			} else {
+				throw new MinecraftError();
+			}
+		} else {
+			field_1006_d = 0L;
+			field_1004_a = s1;
+			field_1007_c = s;
+			setLoadingProgress(-1);
+			field_1006_d = 0L;
+			return;
 		}
 	}
 
@@ -109,7 +128,7 @@ public class LoadingScreenRenderer implements IProgressUpdate {
 
 				this.mc.fontRenderer.drawStringWithShadow(this.field_1007_c, (var5 - this.mc.fontRenderer.getStringWidth(this.field_1007_c)) / 2, var6 / 2 - 4 - 16, 16777215);
 				this.mc.fontRenderer.drawStringWithShadow(this.field_1004_a, (var5 - this.mc.fontRenderer.getStringWidth(this.field_1004_a)) / 2, var6 / 2 - 4 + 8, 16777215);
-				GL11.updateDisplay();
+				Display.update();
 
 				try {
 					Thread.yield();
